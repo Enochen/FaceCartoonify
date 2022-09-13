@@ -50,8 +50,6 @@ def cartoonify():
     decoded = bg_remover.process(decoded, 0.3)
     ad = np.concatenate([decoded, np.full((decoded.shape[0], decoded.shape[1], 1), 255, dtype=np.uint8)], axis=-1)
     white = np.all(decoded == [255,255,255], axis=-1)
-    print(decoded, file=sys.stderr)
-    print(white, file=sys.stderr)
     ad[white, -1] = 0
     final_img = arrToImg(ad)
     return send_file(final_img, mimetype=source.content_type)
