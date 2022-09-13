@@ -13,6 +13,7 @@ import cv2
 
 app = Flask(__name__)
 
+
 def arrToImg(arr):
     img = Image.fromarray(arr.astype('uint8'))
     in_memory_file = io.BytesIO()
@@ -20,15 +21,17 @@ def arrToImg(arr):
     in_memory_file.seek(0)
     return in_memory_file
 
+
 @app.route('/')
 def hello():
     return 'FaceCartoonify'
+
 
 @app.route('/cartoonify', methods=['POST'])
 def cartoonify():
     face_extractor = FaceExtractor()
     bg_remover = BackgroundRemover()
-    
+
     source = request.files.get('source')
 
     in_memory_file = io.BytesIO()
@@ -36,20 +39,22 @@ def cartoonify():
     data = np.fromstring(in_memory_file.getvalue(), np.uint8)
     decoded = cv2.imdecode(data, cv2.IMREAD_UNCHANGED)
     decoded = bg_remover.process(decoded)
-    decoded = face_extractor.process(decoded)
-    
+
     files = {
         'file_type': (None, 'image'),
         'source': (secure_filename(source.filename), arrToImg(decoded), source.content_type)
     }
     res = requests.post(
         'https://master-white-box-cartoonization-psi1104.endpoint.ainize.ai/predict', files=files)
-    
+
     data = np.fromstring(res.content, np.uint8)
     decoded = cv2.imdecode(data, cv2.IMREAD_UNCHANGED)
-    decoded = bg_remover.process(decoded, 0.3)
-    ad = np.concatenate([decoded, np.full((decoded.shape[0], decoded.shape[1], 1), 255, dtype=np.uint8)], axis=-1)
-    white = np.all(decoded == [255,255,255], axis=-1)
-    ad[white, -1] = 0
+    decoded = face_extractor.process(decoded)
+    # decoded = bg_remover.process(decoded, 0.3)
+    ad = np.concatenate([decoded, np.full(
+        (decoded.shape[0], decoded.shape[1], 1), 255, dtype=np.uint8)], axis=-1)
+    mask = cv2.inRange(decoded, np.array(
+        [205, 205, 205]), np.array([255, 255, 255]))
+    ad[mask == 255, -1] = 0
     final_img = arrToImg(ad)
     return send_file(final_img, mimetype=source.content_type)
